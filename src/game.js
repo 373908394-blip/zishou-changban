@@ -18,6 +18,64 @@
   var GD = window.GameData;
   var ZS = window.ZS;
 
+  /* --------------------- 音效（WebAudio 合成，零素材，带节流） --------------------- */
+  var audio = (function () {
+    var ac = null, master = null, on = true, lastAtk = 0, lastHit = 0;
+    function ensure() {
+      if (ac) return ac;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ac = new AC(); } catch (e) { return null; }
+      master = ac.createGain(); master.gain.value = 0.22; master.connect(ac.destination);
+      return ac;
+    }
+    function resume() { var c = ensure(); if (c && c.state === 'suspended') { try { c.resume(); } catch (e) { } } }
+    function tone(freq, dur, type, vol, slideTo) {
+      if (!on) return; var c = ensure(); if (!c) return;
+      var t0 = c.currentTime;
+      var o = c.createOscillator(), g = c.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t0);
+      if (slideTo != null) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.2, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(master);
+      o.start(t0); o.stop(t0 + dur + 0.03);
+    }
+    function seq(freqs, step, dur, type, vol) {
+      freqs.forEach(function (f, i) { setTimeout(function () { tone(f, dur, type, vol); }, i * step); });
+    }
+    return {
+      resume: resume,
+      setOn: function (v) { on = !!v; if (v) resume(); },
+      isOn: function () { return on; },
+      ui: function () { tone(620, 0.04, 'square', 0.07, 520); },
+      attack: function (kind) {
+        var now = Date.now(); if (now - lastAtk < 70) return; lastAtk = now;
+        if (kind === 'gong') tone(560, 0.05, 'triangle', 0.13, 320);
+        else if (kind === 'dao') tone(190, 0.08, 'sawtooth', 0.12, 120);
+        else if (kind === 'qiang') tone(340, 0.07, 'square', 0.1, 190);
+        else tone(150, 0.09, 'sawtooth', 0.12, 90);
+      },
+      hit: function () { var now = Date.now(); if (now - lastHit < 55) return; lastHit = now; tone(95, 0.06, 'sine', 0.13, 60); },
+      merge: function () { seq([440, 660], 70, 0.09, 'triangle', 0.18); },
+      hero: function () { seq([523, 659, 784], 85, 0.12, 'triangle', 0.2); },
+      skill: function (vfx) {
+        if (vfx === 'pierce') tone(220, 0.18, 'sawtooth', 0.2, 950);
+        else if (vfx === 'stun') tone(130, 0.26, 'sine', 0.24, 48);
+        else {
+          for (var i = 0; i < 8; i++) (function (k) {
+            setTimeout(function () { tone(680 + Math.random() * 420, 0.05, 'triangle', 0.1, 300); }, k * 45);
+          })(i);
+        }
+      },
+      win: function () { seq([523, 659, 784, 1047], 120, 0.15, 'triangle', 0.2); },
+      lose: function () { seq([392, 330, 262, 196], 140, 0.2, 'sine', 0.18); },
+      error: function () { tone(160, 0.12, 'square', 0.11, 90); }
+    };
+  })();
+
   /* ----------------------------- DOM 引用 ----------------------------- */
   var $ = function (id) { return document.getElementById(id); };
   var dom = {
@@ -35,6 +93,7 @@
     resultSeal: $('result-seal'), resultTitle: $('result-title'), resultStats: $('result-stats'),
     btnNext: $('btn-next'), btnReplay: $('btn-replay'), btnResultBack: $('btn-result-back'),
     chkReduceMenu: $('chk-reduce-menu'), chkReducePause: $('chk-reduce-pause'),
+    chkSoundMenu: $('chk-sound-menu'), chkSoundPause: $('chk-sound-pause'),
     toast: $('toast')
   };
 
@@ -44,6 +103,7 @@
   var state = {
     mode: 'menu',          // menu | levels | prep | battle | result
     paused: false,
+    hitStop: 0,            // 技能命中顿帧（秒）：>0 时冻结逻辑、仅渲染
     reduceMotion: false,
     mapId: null,
     map: null,             // 解析后的地图（含 waves）
@@ -187,6 +247,7 @@
     state.kills = 0;
     state.result = null;
     state.paused = false;
+    state.hitStop = 0;
     state.spawner = null;
     state.dragging = null;
 
@@ -222,6 +283,7 @@
       defId: pick.defId
     };
     state.hand.push(card);
+    audio.ui();
     renderHand();
     updateHud();
   }
@@ -396,6 +458,7 @@
     var label = GD.ANIM.tierLabel[u.tier] || (u.tier + '阶');
     pushFloat(u.x, u.y - state.tile * 0.42, u.char + '·' + label, '#1A1A1A');
     state.effects.push({ type: 'ring', x: u.x, y: u.y, timer: 0.5, max: 0.5, color: '#1A1A1A' });
+    audio.merge();
   }
 
   // 两字武将喂升：任意一个字（或另一武将）→ 阶 +1（封顶 HERO_MAX_TIER）
@@ -409,6 +472,7 @@
     var label = GD.ANIM.tierLabel[hero.tier] || (hero.tier + '阶');
     pushFloat(hero.x, hero.y - state.tile * 0.5, hero.name + '·' + label, '#C0392B');
     state.effects.push({ type: 'heroUpRing', x: hero.x, y: hero.y, timer: 0.7, max: 0.7 });
+    audio.merge();
     return true;
   }
 
@@ -425,6 +489,7 @@
     state.units.push(inst);
     pushFloat(inst.x, inst.y - state.tile * 0.5, '合成·' + inst.name, '#C0392B');
     state.effects.push({ type: 'heroUpRing', x: inst.x, y: inst.y, timer: 0.7, max: 0.7 });
+    audio.hero();
   }
 
   function moveUnit(uid, cell) {
@@ -441,6 +506,7 @@
 
   function flashInvalid(cell) {
     state.effects.push({ type: 'invalid', col: cell.col, row: cell.row, timer: 0.3, max: 0.3 });
+    audio.error();
   }
 
   /* ============================ 战斗：出战 ============================ */
@@ -460,6 +526,7 @@
       return;
     }
     setMode('battle');
+    audio.ui();
     var waves = state.map.waves;
     state.spawner = {
       waveIndex: 0, phase: 'startDelay', timer: 0,
@@ -598,6 +665,7 @@
   function applyAttack(u) {
     var tgt = (u.currentTarget && !u.currentTarget.dead) ? u.currentTarget : findTarget(u);
     if (!tgt) return;
+    audio.attack(u.anim);
     if (u.projectile) {
       // 弓/黄忠：生成箭矢（沿方向飞行，带拖尾）
       var ang = Math.atan2(tgt.y - u.y, tgt.x - u.x);
@@ -609,6 +677,7 @@
     } else {
       // 近战：命中瞬间结算 + 命中墨点迸溅
       damageMonster(tgt, u.damage);
+      audio.hit();
       state.effects.push({
         type: 'impact', x: tgt.x, y: tgt.y,
         color: u.isHero ? '#C0392B' : '#1A1A1A',
@@ -651,6 +720,7 @@
         // 命中：箭矢迸溅 + 伤害
         state.effects.push({ type: 'impact', x: p.target.x, y: p.target.y, color: p.hero ? '#C0392B' : '#1A1A1A', timer: 0.2, max: 0.2 });
         damageMonster(p.target, p.damage); p.dead = true;
+        audio.hit();
       } else {
         p.x += dx / d * step; p.y += dy / d * step;
         p.angle = Math.atan2(dy, dx);
@@ -670,6 +740,8 @@
     else if (skill.vfx === 'stun') doStun(u, skill);
     else if (skill.vfx === 'arrowrain') doArrowRain(u, skill, nearest);
 
+    audio.skill(skill.vfx);
+    state.hitStop = (skill.vfx === 'stun') ? 0.13 : 0.10;  // 技能命中顿帧
     u.skillCdTimer = skill.cooldown;
     updateHud();
   }
@@ -753,6 +825,7 @@
     state.cleared[state.mapId] = true;
     if (state.mapId === 'changban') state.unlocked.chibi = true; // 通关解锁赤壁
     state.result = 'win';
+    audio.win();
     setMode('result');
     showResult();
   }
@@ -760,6 +833,7 @@
   function loseGame() {
     if (state.mode === 'result') return;
     state.result = 'lose';
+    audio.lose();
     setMode('result');
     showResult();
   }
@@ -1165,9 +1239,9 @@
       }
       ctx.restore();
     } else if (e.type === 'floatText') {
-      // 浮字（升阶 / 合成 / 满级提示）
+      // 浮字（升阶 / 合成 / 满级提示）；减弱动效时不位移，仅淡出
       var pf = 1 - e.timer / e.max;
-      var rise = pf * T * 0.9;
+      var rise = state.reduceMotion ? 0 : pf * T * 0.9;
       ctx.save();
       ctx.globalAlpha = 1 - pf * 0.85;
       ctx.fillStyle = e.color || '#1A1A1A';
@@ -1178,7 +1252,7 @@
     } else if (e.type === 'shockwave' || e.type === 'heroUpRing' || e.type === 'ring') {
       var q = 1 - e.timer / e.max;
       var baseR = e.r || (e.type === 'ring' ? T * 0.45 : T * 0.7);
-      var R = baseR * (0.25 + q);
+      var R = state.reduceMotion ? baseR : baseR * (0.25 + q);   // 减弱动效：不扩散
       ctx.save();
       ctx.globalAlpha = (1 - q) * 0.85;
       ctx.strokeStyle = e.color || (e.type === 'heroUpRing' ? '#C0392B' : '#1A1A1A');
@@ -1189,9 +1263,25 @@
       }
       ctx.restore();
     } else if (e.type === 'arrowrain') {
-      // 黄忠箭雨：落点圈 + 多箭下落
       var q2 = 1 - e.timer / e.max;
       var count = e.count || 12;
+      if (state.reduceMotion) {
+        // 减弱动效：不下落，改为静态落点圈 + 定点墨点
+        ctx.save();
+        ctx.globalAlpha = 0.6 * (1 - q2 * 0.5);
+        ctx.strokeStyle = 'rgba(192,57,43,0.7)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillStyle = 'rgba(26,26,26,0.6)';
+        for (var s = 0; s < count; s++) {
+          var rr0 = Math.abs(Math.sin(e.seed + s * 12.9898) * 43758.5453) % 1;
+          var aa0 = Math.abs(Math.sin(e.seed * 3 + s * 78.233) * 12543.21) % 1;
+          ctx.beginPath();
+          ctx.arc(e.x + Math.cos(aa0 * Math.PI * 2) * e.r * rr0, e.y + Math.sin(aa0 * Math.PI * 2) * e.r * rr0, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        return;
+      }
       ctx.save();
       ctx.globalAlpha = 0.45;
       ctx.strokeStyle = 'rgba(192,57,43,0.6)';
@@ -1321,8 +1411,11 @@
     var dt = (t - state._last) / 1000;
     state._last = t;
     if (dt > 0.05) dt = 0.05; // 防止切后台/暂停后跳帧
-    // 暂停时不推进逻辑与计时（冻结）
-    if (state.mode === 'battle' && !state.paused) update(dt);
+    // 暂停 / 技能命中顿帧：冻结逻辑推进，仅渲染（顿帧期间保留画面冲击感）
+    if (state.mode === 'battle' && !state.paused) {
+      if (state.hitStop > 0) state.hitStop = Math.max(0, state.hitStop - dt);
+      else update(dt);
+    }
     render();
     updateHud();
     requestAnimationFrame(loop);
@@ -1337,10 +1430,10 @@
 
   /* ============================ 事件绑定 ============================ */
   function bindEvents() {
-    dom.btnStart.addEventListener('click', function () { setMode('levels'); });
-    dom.btnHowto.addEventListener('click', function () { dom.howto.classList.add('active'); });
-    dom.btnHowtoClose.addEventListener('click', function () { dom.howto.classList.remove('active'); });
-    dom.btnLevelsBack.addEventListener('click', function () { setMode('menu'); });
+    dom.btnStart.addEventListener('click', function () { audio.ui(); setMode('levels'); });
+    dom.btnHowto.addEventListener('click', function () { audio.ui(); dom.howto.classList.add('active'); });
+    dom.btnHowtoClose.addEventListener('click', function () { audio.ui(); dom.howto.classList.remove('active'); });
+    dom.btnLevelsBack.addEventListener('click', function () { audio.ui(); setMode('menu'); });
 
     dom.btnRecruit.addEventListener('click', recruit);
     dom.btnDeploy.addEventListener('click', beginBattle);
@@ -1353,13 +1446,13 @@
       triggerSkill(hero);
     });
 
-    dom.btnPause.addEventListener('click', function () { togglePause(true); });
-    dom.btnResume.addEventListener('click', function () { togglePause(false); });
-    dom.btnRetry.addEventListener('click', function () { startLevel(state.mapId); });
-    dom.btnExit.addEventListener('click', function () { state.paused = false; dom.pauseOverlay.classList.remove('active'); setMode('levels'); });
+    dom.btnPause.addEventListener('click', function () { audio.ui(); togglePause(true); });
+    dom.btnResume.addEventListener('click', function () { audio.ui(); togglePause(false); });
+    dom.btnRetry.addEventListener('click', function () { audio.ui(); startLevel(state.mapId); });
+    dom.btnExit.addEventListener('click', function () { audio.ui(); state.paused = false; dom.pauseOverlay.classList.remove('active'); setMode('levels'); });
 
-    dom.btnReplay.addEventListener('click', function () { startLevel(state.mapId); });
-    dom.btnResultBack.addEventListener('click', function () { setMode('levels'); });
+    dom.btnReplay.addEventListener('click', function () { audio.ui(); startLevel(state.mapId); });
+    dom.btnResultBack.addEventListener('click', function () { audio.ui(); setMode('levels'); });
 
     // 减弱动效（两处开关同步）
     function setReduce(v) {
@@ -1368,6 +1461,16 @@
     }
     dom.chkReduceMenu.addEventListener('change', function () { setReduce(dom.chkReduceMenu.checked); });
     dom.chkReducePause.addEventListener('change', function () { setReduce(dom.chkReducePause.checked); });
+
+    // 音效开关（两处同步）
+    function setSound(v) {
+      dom.chkSoundMenu.checked = v; dom.chkSoundPause.checked = v; audio.setOn(v);
+    }
+    dom.chkSoundMenu.addEventListener('change', function () { setSound(dom.chkSoundMenu.checked); });
+    dom.chkSoundPause.addEventListener('change', function () { setSound(dom.chkSoundPause.checked); });
+
+    // 首次交互恢复音频上下文（浏览器自动播放策略）
+    window.addEventListener('pointerdown', function () { audio.resume(); }, { once: true });
 
     // 画布指针（拖拽场上单位）
     dom.field.addEventListener('pointerdown', onCanvasPointerDown);

@@ -22,6 +22,10 @@
           <input type="checkbox" id="chk-reduce-menu" />
           <span>减弱动效（关闭字形形变与技能特效，保留静态）</span>
         </label>
+        <label class="reduce-toggle">
+          <input type="checkbox" id="chk-sound-menu" checked />
+          <span>音效（出击 / 合成 / 技能提示音）</span>
+        </label>
       </div>
     </section>
 
@@ -58,7 +62,7 @@
       <!-- 战场画布 -->
       <div id="field-wrap">
         <canvas id="field"></canvas>
-        <div id="txt-hint" class="field-hint">拖字到空格布防 · 同字拖合升阶 · 赵+云=赵云</div>
+        <div id="txt-hint" class="field-hint">拖字布防 · 同字升阶 · 赵+云/张+飞/黄+忠=武将 · 拖任意字喂武将升阶</div>
       </div>
 
       <!-- 底部 HUD：征兵 / 出战 / 手牌 / 技能 -->
@@ -66,7 +70,7 @@
         <button id="btn-recruit" class="ink-btn">征兵 (-<span id="recruit-cost">3</span>)</button>
         <button id="btn-deploy" class="ink-btn primary">出战</button>
         <div id="hand" class="hand"><!-- 手牌卡片由 JS 生成 --></div>
-        <button id="btn-skill" class="ink-btn skill hidden">贯穿</button>
+        <button id="btn-skill" class="ink-btn skill hidden">技能</button>
       </div>
     </section>
 
@@ -82,6 +86,10 @@
         <label class="reduce-toggle">
           <input type="checkbox" id="chk-reduce-pause" />
           <span>减弱动效</span>
+        </label>
+        <label class="reduce-toggle">
+          <input type="checkbox" id="chk-sound-pause" checked />
+          <span>音效</span>
         </label>
       </div>
     </section>
@@ -107,9 +115,11 @@
         <div class="howto-body">
           <p><b>核心：</b>汉字即作战单位。征兵抽字、拖到战场空格布防，单位自动攻击沿路而来的敌军，守住右下角的阿斗据点。</p>
           <p><b>征兵：</b>消耗 3 馒头随机抽一个汉字。刀/枪/弓/骑为基础兵种，赵/云等为名将碎片。</p>
-          <p><b>合成升阶：</b>把两个<b>同字同阶</b>的单位拖到一起 → 升一阶（t1→t2→t3，伤害倍增）。跨阶不合。</p>
-          <p><b>名将对子：</b>把名碎片拖到一起配对 —— <b>赵 + 云 = 赵云</b>（强力武将，可放"贯穿"技能）。</p>
-          <p><b>战斗：</b>点"出战"后敌军按波次来袭。刀弧/枪刺/弓拉/骑冲各有字形动效；弓兵发射墨箭。击杀掉馒头，漏怪扣阿斗血。</p>
+          <p><b>合成升阶：</b>把两个<b>同字同阶</b>的单位拖到一起 → 升一阶（一阶→二阶→三阶，伤害倍增）。跨阶不合。每个单位右下角有<b>阶数角标</b>。</p>
+          <p><b>名将对子：</b>把名碎片拖到一起配对 —— <b>赵+云=赵云</b>、<b>张+飞=张飞</b>、<b>黄+忠=黄忠</b>，三名两字武将各带专属技能。</p>
+          <p><b>武将喂升：</b>把<b>任意一个字</b>（兵种或碎片）拖到武将身上 → 武将升一阶（最高五阶，伤害随阶提升）。</p>
+          <p><b>战斗：</b>点"出战"后敌军按波次来袭。刀挥砍/枪突刺/<b>弓拉伸蓄力射箭</b>/骑冲锋扬尘各有字形动效；武将技能：赵云·贯穿、张飞·眩喝(定身)、黄忠·箭雨。击杀掉馒头，漏怪扣阿斗血。</p>
+          <p><b>音效：</b>出击、合成、技能均有提示音，可在菜单/暂停处关闭。</p>
           <p><b>胜负：</b>清完所有波次且阿斗存活 = 过关；阿斗血归零 = 失败。</p>
         </div>
         <button id="btn-howto-close" class="ink-btn primary">明白了</button>

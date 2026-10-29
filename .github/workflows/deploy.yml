@@ -1,5 +1,8 @@
-name: Deploy to GitHub Pages
+name: Build & Deploy to GitHub Pages
 
+# 触发方式：
+#   1) 推送到 main 分支自动构建 + 部署
+#   2) 在 Actions 页面手动 "Run workflow"
 on:
   push:
     branches: [main]
@@ -15,7 +18,39 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── 构建关卡（build gate）─────────────────────────────────────
+  # 本工程为零依赖零构建的静态站点，因此"构建"= 数据契约 + 纯逻辑校验。
+  # 任一断言失败 → 整个工作流失败 → 绝不部署坏版本到线上。
+  build:
+    name: Validate (build gate)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run data & logic validation
+        run: node tests/validate.js
+
+      - name: Verify static entry files exist
+        run: |
+          test -f index.html
+          test -f style.css
+          test -f design/data-schema.js
+          test -f src/game.js
+          test -f src/util.js
+          echo "静态入口文件齐全"
+
+  # ── 部署关卡（deploy）────────────────────────────────────────
+  # 仅在 build 通过后执行，发布到 GitHub Pages。
+  # 前置条件：仓库 Settings → Pages → Source 选择 "GitHub Actions"。
   deploy:
+    name: Deploy
+    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -23,12 +58,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Pages
         uses: actions/configure-pages@v4
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: .
-      - name: Deploy
+
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

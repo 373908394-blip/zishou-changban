@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>字守长坂 · 文字合成塔防</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ============================ 主菜单 ============================ -->
+    <section id="screen-menu" class="screen active">
+      <div class="paper-panel menu-panel">
+        <h1 class="game-title">字守长坂</h1>
+        <p class="subtitle">汉字即作战单位 · 拖合生将 · 守住阿斗</p>
+        <div class="menu-buttons">
+          <button id="btn-start" class="ink-btn primary">开始游戏</button>
+          <button id="btn-howto" class="ink-btn">玩法说明</button>
+        </div>
+        <label class="reduce-toggle">
+          <input type="checkbox" id="chk-reduce-menu" />
+          <span>减弱动效（关闭字形形变与技能特效，保留静态）</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ============================ 选关 ============================ -->
+    <section id="screen-levels" class="screen">
+      <div class="paper-panel">
+        <h2 class="screen-title">选择关卡</h2>
+        <div id="level-list" class="level-list"><!-- 由 JS 按 MAPS 生成 --></div>
+        <button id="btn-levels-back" class="ink-btn ghost">返回</button>
+      </div>
+    </section>
+
+    <!-- ====================== 备战 / 对局（共享舞台） ====================== -->
+    <section id="game-stage" class="screen">
+      <!-- 顶部 HUD -->
+      <div id="hud-top" class="hud-bar">
+        <div class="hud-stat" title="馒头（资源）">
+          <span class="hud-label">馒头</span>
+          <span id="txt-mantou" class="hud-value">0</span>
+        </div>
+        <div class="hud-stat" title="阿斗据点血量">
+          <span class="hud-label">阿斗</span>
+          <span id="txt-hp" class="hud-value">0</span>
+          <span id="hp-dots" class="hp-dots"></span>
+        </div>
+        <div class="hud-stat" id="wave-stat" title="当前波次">
+          <span class="hud-label">波次</span>
+          <span id="txt-wave" class="hud-value">0/0</span>
+        </div>
+        <div class="hud-spacer"></div>
+        <button id="btn-pause" class="ink-btn small hidden">暂停</button>
+      </div>
+
+      <!-- 战场画布 -->
+      <div id="field-wrap">
+        <canvas id="field"></canvas>
+        <div id="txt-hint" class="field-hint">拖字到空格布防 · 同字拖合升阶 · 赵+云=赵云</div>
+      </div>
+
+      <!-- 底部 HUD：征兵 / 出战 / 手牌 / 技能 -->
+      <div id="hud-bottom" class="hud-bar">
+        <button id="btn-recruit" class="ink-btn">征兵 (-<span id="recruit-cost">3</span>)</button>
+        <button id="btn-deploy" class="ink-btn primary">出战</button>
+        <div id="hand" class="hand"><!-- 手牌卡片由 JS 生成 --></div>
+        <button id="btn-skill" class="ink-btn skill hidden">贯穿</button>
+      </div>
+    </section>
+
+    <!-- ============================ 暂停 ============================ -->
+    <section id="pause-overlay" class="screen overlay">
+      <div class="paper-panel">
+        <h2 class="screen-title">已暂停</h2>
+        <div class="menu-buttons">
+          <button id="btn-resume" class="ink-btn primary">继续</button>
+          <button id="btn-retry" class="ink-btn">重试本关</button>
+          <button id="btn-exit" class="ink-btn ghost">退出到选关</button>
+        </div>
+        <label class="reduce-toggle">
+          <input type="checkbox" id="chk-reduce-pause" />
+          <span>减弱动效</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- ============================ 结算 ============================ -->
+    <section id="screen-result" class="screen overlay">
+      <div class="paper-panel result-panel">
+        <div id="result-seal" class="result-seal">过关</div>
+        <h2 id="result-title" class="screen-title">长坂坡 · 过关</h2>
+        <ul id="result-stats" class="result-stats"></ul>
+        <div class="menu-buttons">
+          <button id="btn-next" class="ink-btn primary hidden">下一关</button>
+          <button id="btn-replay" class="ink-btn">再来一局</button>
+          <button id="btn-result-back" class="ink-btn ghost">返回选关</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ 玩法说明 ============================ -->
+    <section id="howto" class="screen overlay">
+      <div class="paper-panel howto-panel">
+        <h2 class="screen-title">玩法说明</h2>
+        <div class="howto-body">
+          <p><b>核心：</b>汉字即作战单位。征兵抽字、拖到战场空格布防，单位自动攻击沿路而来的敌军，守住右下角的阿斗据点。</p>
+          <p><b>征兵：</b>消耗 3 馒头随机抽一个汉字。刀/枪/弓/骑为基础兵种，赵/云等为名将碎片。</p>
+          <p><b>合成升阶：</b>把两个<b>同字同阶</b>的单位拖到一起 → 升一阶（t1→t2→t3，伤害倍增）。跨阶不合。</p>
+          <p><b>名将对子：</b>把名碎片拖到一起配对 —— <b>赵 + 云 = 赵云</b>（强力武将，可放"贯穿"技能）。</p>
+          <p><b>战斗：</b>点"出战"后敌军按波次来袭。刀弧/枪刺/弓拉/骑冲各有字形动效；弓兵发射墨箭。击杀掉馒头，漏怪扣阿斗血。</p>
+          <p><b>胜负：</b>清完所有波次且阿斗存活 = 过关；阿斗血归零 = 失败。</p>
+        </div>
+        <button id="btn-howto-close" class="ink-btn primary">明白了</button>
+      </div>
+    </section>
+
+    <!-- 轻提示（出战前置校验等） -->
+    <div id="toast" class="toast hidden"></div>
+
+  </div>
+
+  <!-- 经典脚本，按依赖顺序引入（file:// 双击可直接运行，无 CORS） -->
+  <script src="design/data-schema.js"></script>
+  <script src="src/util.js"></script>
+  <script src="src/game.js"></script>
+</body>
+</html>

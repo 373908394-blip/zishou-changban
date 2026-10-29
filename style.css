@@ -1,0 +1,215 @@
+/* =============================================================================
+ * style.css — 《字守长坂》水墨国风样式
+ * 视觉锚点（concept §5）：宣纸米白 #F4EFE3 / 墨黑 #1A1A1A / 朱红印章 #C0392B。
+ * 可访问性：触控热区 >=44px、字形 >=48px（由 canvas 保证）、减弱动效开关。
+ * 字体回退：'KaiTi','STKaiti','Songti SC',serif。
+ * ========================================================================== */
+
+:root {
+  --paper: #F4EFE3;
+  --paper-2: #ECE4D2;
+  --ink: #1A1A1A;
+  --ink-soft: #4a4a44;
+  --seal: #C0392B;
+  --seal-soft: rgba(192, 57, 43, 0.12);
+  --line: rgba(26, 26, 26, 0.18);
+  --ui-font: 'KaiTi', 'STKaiti', 'Songti SC', 'SimSun', serif;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--ui-font);
+  overflow: hidden;
+  touch-action: none; /* 防止拖拽时页面滚动 */
+}
+
+#app {
+  position: relative;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255,255,255,0.4), transparent 60%),
+    var(--paper);
+}
+
+/* ----------------------------- 屏幕切换 ----------------------------- */
+.screen { display: none; }
+.screen.active { display: flex; }
+.screen.overlay {
+  position: absolute; inset: 0; z-index: 50;
+  align-items: center; justify-content: center;
+  background: rgba(244, 239, 227, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+/* ----------------------------- 宣纸面板 ----------------------------- */
+.paper-panel {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  padding: 28px 34px;
+  max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.12), inset 0 0 60px rgba(192,57,43,0.03);
+  text-align: center;
+}
+
+.game-title {
+  font-size: 56px; margin: 0 0 6px;
+  letter-spacing: 8px; color: var(--ink);
+  text-shadow: 2px 2px 0 var(--seal-soft);
+}
+.subtitle { color: var(--ink-soft); margin: 0 0 22px; font-size: 16px; letter-spacing: 2px; }
+.screen-title { font-size: 30px; letter-spacing: 4px; margin: 0 0 18px; }
+
+/* ----------------------------- 按钮（墨印风） ----------------------------- */
+.ink-btn {
+  font-family: var(--ui-font);
+  font-size: 19px; letter-spacing: 2px;
+  min-height: 48px; min-width: 48px;            /* 触控热区 >=44px */
+  padding: 10px 20px; margin: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform .08s ease, background .15s ease, color .15s ease;
+  user-select: none;
+}
+.ink-btn:hover { background: var(--ink); color: var(--paper); }
+.ink-btn:active { transform: translateY(1px) scale(0.98); }
+.ink-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.ink-btn.primary { background: var(--seal); color: #fff; border-color: var(--seal); }
+.ink-btn.primary:hover { background: #a93226; color: #fff; }
+.ink-btn.ghost { border-style: dashed; }
+.ink-btn.small { font-size: 16px; padding: 8px 14px; }
+.ink-btn.skill {
+  background: var(--seal); color: #fff; border-color: var(--seal);
+  box-shadow: 0 0 0 0 var(--seal-soft);
+}
+.ink-btn.skill:not(:disabled) { animation: pulse 1.4s infinite; }
+.ink-btn.skill:disabled { background: #8a8a85; border-color: #8a8a85; animation: none; }
+@keyframes pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(192,57,43,0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(192,57,43,0); }
+}
+
+.menu-buttons { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+
+/* ----------------------------- 减弱动效开关 ----------------------------- */
+.reduce-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 18px; font-size: 15px; color: var(--ink-soft);
+  cursor: pointer;
+}
+.reduce-toggle input { width: 20px; height: 20px; min-width: 20px; }
+
+/* ----------------------------- 选关卡片 ----------------------------- */
+.level-list { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; margin-bottom: 18px; }
+.level-card {
+  width: 200px; padding: 18px; text-align: center;
+  border: 2px solid var(--ink); border-radius: 4px; background: var(--paper-2);
+}
+.level-card h3 { margin: 0 0 6px; font-size: 24px; letter-spacing: 3px; }
+.level-card p { margin: 0 0 12px; color: var(--ink-soft); font-size: 14px; }
+.level-card.locked { opacity: 0.45; }
+.level-card .star { color: var(--seal); font-size: 18px; letter-spacing: 2px; }
+
+/* ============================ 游戏舞台 ============================ */
+#game-stage {
+  flex-direction: column; width: 100%; height: 100%;
+  align-items: center; justify-content: center; gap: 8px; padding: 8px;
+}
+.hud-bar {
+  display: flex; align-items: center; gap: 10px;
+  width: min(96vw, 820px);
+  padding: 6px 10px;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+.hud-spacer { flex: 1; }
+.hud-stat { display: inline-flex; align-items: center; gap: 6px; font-size: 18px; }
+.hud-label { color: var(--ink-soft); font-size: 15px; }
+.hud-value { font-weight: bold; font-size: 22px; min-width: 24px; text-align: center; }
+.hp-dots { display: inline-flex; gap: 2px; flex-wrap: wrap; max-width: 140px; }
+.hp-dots i {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--seal); display: inline-block;
+}
+.hp-dots i.empty { background: transparent; border: 1px solid var(--seal); }
+
+#field-wrap { position: relative; display: flex; align-items: center; justify-content: center; }
+#field {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.10);
+  touch-action: none;
+  max-width: 96vw;
+  max-height: 62vh;
+}
+.field-hint {
+  position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; color: var(--ink-soft);
+  background: rgba(244,239,227,0.7); padding: 2px 8px; border-radius: 3px;
+  pointer-events: none; white-space: nowrap;
+}
+
+/* ----------------------------- 手牌区 ----------------------------- */
+.hand {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  min-height: 56px; flex: 1; justify-content: flex-start;
+}
+.card {
+  width: 52px; height: 52px; min-width: 44px; min-height: 44px;   /* 触控 >=44px */
+  display: flex; align-items: center; justify-content: center;
+  font-size: 30px; font-family: var(--ui-font);
+  border: 2px solid var(--ink); border-radius: 4px;
+  background: var(--paper); color: var(--ink);
+  cursor: grab; user-select: none; touch-action: none;
+  position: relative;
+}
+.card.fragment { border-color: var(--seal); color: var(--seal); background: #fbf3ee; }
+.card:active { cursor: grabbing; }
+.card .tier-badge {
+  position: absolute; top: -8px; right: -8px;
+  background: var(--seal); color: #fff; font-size: 12px;
+  border-radius: 50%; width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; /* 点击穿透到卡片，避免拖拽源错乱 */
+}
+.card.dragging { opacity: 0.4; }
+
+/* ----------------------------- 结算印章 ----------------------------- */
+.result-seal {
+  width: 96px; height: 96px; margin: 0 auto 8px;
+  border: 4px solid var(--seal); border-radius: 8px;
+  color: var(--seal); font-size: 40px; font-weight: bold;
+  display: flex; align-items: center; justify-content: center;
+  transform: rotate(-6deg); letter-spacing: 2px;
+}
+.result-seal.lose { border-color: var(--ink); color: var(--ink); }
+.result-stats { list-style: none; padding: 0; margin: 0 0 18px; font-size: 18px; line-height: 1.9; }
+.result-stats b { color: var(--seal); }
+
+.howto-body { text-align: left; max-width: 560px; font-size: 16px; line-height: 1.8; }
+.howto-body p { margin: 8px 0; }
+.howto-body b { color: var(--seal); }
+
+.hidden { display: none !important; }
+
+/* ----------------------------- 轻提示 toast ----------------------------- */
+.toast {
+  position: fixed; left: 50%; top: 22%;
+  transform: translateX(-50%);
+  background: var(--ink); color: var(--paper);
+  border: 2px solid var(--seal); border-radius: 4px;
+  padding: 12px 22px; font-size: 18px; letter-spacing: 1px;
+  z-index: 200; box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+  pointer-events: none; max-width: 86vw; text-align: center;
+}

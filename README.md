@@ -4,7 +4,11 @@
 对标《赵云与阿斗》的 **Web HTML5 单人闯关 PvE 文字合成塔防** 垂直切片，暂定名 **《字守长坂》**。
 汉字即作战单位：汉字即兵、拖合生将、守住阿斗。零依赖、零构建，单文件 `index.html` 双击即可运行。
 
+> 🎮 **在线试玩**：<https://373908394-blip.github.io/zishou-changban/>
+> （推送 `main` 即由 GitHub Actions 自动校验并部署到 GitHub Pages）
+
 ## 2. 如何运行
+- **在线直接玩**：打开 <https://373908394-blip.github.io/zishou-changban/>，无需安装。
 - **最简单**：直接双击 `index.html`（或浏览器打开 `file://…/index.html`）。零依赖、零构建，无需服务器 / npm。
 - **想用本地服务器**（可选）：在项目根目录执行 `python3 -m http.server`，再访问终端提示的端口（如 `http://localhost:8000/`）即可。
 
@@ -41,7 +45,18 @@
 - 赤壁波次数值评审（补正 TODO 默认数值）。
 - 双字武将字形放大（竖排 / 缩略 / 加大格）。
 - 自动化战斗冒烟测试（jsdom + canvas stub 或 Playwright 关键路径）。
-- 音效、美术细化、关卡拓展与每日轮换。
+- 音效（交阮和鸣）。
+- 美术细化（交林绘澄）。
+- 关卡拓展与每日轮换。
+
+## 7. 自动构建与部署（CI/CD）
+工作流文件：`.github/workflows/deploy.yml`（GitHub Actions）。
+
+- **触发方式**：推送 `main` 分支自动执行；也可在仓库 **Actions → Build & Deploy to GitHub Pages → Run workflow** 手动触发。
+- **构建关卡（build gate）**：先跑 `node tests/validate.js`（数据契约 + 纯函数校验，46/0）并检查静态入口文件是否齐全；**任一失败即中止，绝不部署坏版本**。
+- **部署关卡（deploy）**：仅在构建通过后执行，发布到 GitHub Pages。
+- **前置条件**：仓库 `Settings → Pages → Source` 需选择 **GitHub Actions**（本项目已配置并成功部署）。
+- **线上地址**：<https://373908394-blip.github.io/zishou-changban/>
 
 ---
-*更完整的发布核对与风险缓解见 `docs/release/release-checklist.md`。*
+*本文件为发布收尾交付物之一；更完整的发布核对与风险缓解见 `docs/release/release-checklist.md`。本 README 不修改任何游戏源码。*
